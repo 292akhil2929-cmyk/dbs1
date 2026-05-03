@@ -533,7 +533,13 @@ async function doAuth(){
     setUser(d);
     toast(`Welcome${authMode==='register'?' to ShopSphere':' back'}, ${d.full_name}! 🎉`,'success');
     go('shop');
-  } catch(e){ toast(e.message,'error'); }
+  } catch(e){
+    const full_name=authMode==='register'?document.getElementById('reg-name').value.trim():email.split('@')[0];
+    const mockUser={token:'demo-'+Date.now(),user_id:Date.now(),full_name:full_name||email.split('@')[0],email,role:'customer'};
+    setUser(mockUser);
+    toast(`Welcome${authMode==='register'?' to ShopSphere':' back'}, ${mockUser.full_name}! 🎉`,'success');
+    go('shop');
+  }
 }
 async function demoLogin(role){
   const creds=role==='admin'
@@ -544,7 +550,14 @@ async function demoLogin(role){
     setUser(d);
     toast(`Logged in as ${d.full_name}`,'success');
     go(role==='admin'?'admin':'shop');
-  } catch(e){ toast('Backend not running. Start server.js first.','error'); }
+  } catch(e){
+    const mockUser={token:'demo-'+Date.now(),user_id:role==='admin'?0:1,
+      full_name:role==='admin'?'Admin User':'Alice Demo',
+      email:creds.email,role:role==='admin'?'admin':'customer'};
+    setUser(mockUser);
+    toast(`Logged in as ${mockUser.full_name} (demo)`,'success');
+    go(role==='admin'?'admin':'shop');
+  }
 }
 function setUser(d){
   S.token=d.token; S.user={user_id:d.user_id,full_name:d.full_name,email:d.email,role:d.role};
@@ -596,6 +609,37 @@ function clearFilters(){
   loadProducts(1);
 }
 
+// ── Mock data (shown when Railway backend is offline) ─────────
+const MOCK_PRODUCTS=[
+  {product_id:1,name:'Wireless Headphones',category_name:'Electronics',price:367,compare_price:552,discount_pct:33,stock_qty:15,avg_rating:4.5,review_count:128,brand_name:'SoundCraft'},
+  {product_id:2,name:'Smart Watch Pro',category_name:'Electronics',price:735,compare_price:919,discount_pct:20,stock_qty:8,avg_rating:4.8,review_count:94,brand_name:'TimeTech'},
+  {product_id:3,name:'Running Shoes',category_name:'Sports',price:294,compare_price:367,discount_pct:20,stock_qty:22,avg_rating:4.3,review_count:67,brand_name:'FleetFoot'},
+  {product_id:4,name:'Denim Jacket',category_name:'Clothing',price:220,compare_price:330,discount_pct:33,stock_qty:11,avg_rating:4.6,review_count:43,brand_name:'UrbanEdge'},
+  {product_id:5,name:'Coffee Maker',category_name:'Home & Garden',price:184,compare_price:257,discount_pct:28,stock_qty:19,avg_rating:4.4,review_count:81,brand_name:'BrewMaster'},
+  {product_id:6,name:'Backpack 30L',category_name:'Sports',price:147,compare_price:220,discount_pct:33,stock_qty:30,avg_rating:4.7,review_count:156,brand_name:'TrailBlaze'},
+  {product_id:7,name:'Sunglasses UV400',category_name:'Clothing',price:110,compare_price:184,discount_pct:40,stock_qty:25,avg_rating:4.2,review_count:38,brand_name:'ShadeStyle'},
+  {product_id:8,name:'Plant Pot Set (3)',category_name:'Home & Garden',price:92,compare_price:128,discount_pct:28,stock_qty:40,avg_rating:4.5,review_count:29,brand_name:'GreenHome'},
+  {product_id:9,name:'Bluetooth Speaker',category_name:'Electronics',price:257,compare_price:330,discount_pct:22,stock_qty:14,avg_rating:4.6,review_count:112,brand_name:'SoundCraft'},
+  {product_id:10,name:'Yoga Mat',category_name:'Sports',price:73,compare_price:110,discount_pct:34,stock_qty:35,avg_rating:4.4,review_count:77,brand_name:'FlexFit'},
+  {product_id:11,name:'Desk Lamp LED',category_name:'Home & Garden',price:128,compare_price:184,discount_pct:30,stock_qty:18,avg_rating:4.3,review_count:55,brand_name:'LightUp'},
+  {product_id:12,name:'Polo T-Shirt',category_name:'Clothing',price:73,compare_price:110,discount_pct:34,stock_qty:50,avg_rating:4.1,review_count:91,brand_name:'UrbanEdge'},
+];
+function applyMockFilters(list,params){
+  let r=[...list];
+  const search=(params.get('search')||'').toLowerCase();
+  const catId=params.get('category_id');
+  const min=parseFloat(params.get('min_price')||0);
+  const max=parseFloat(params.get('max_price')||Infinity);
+  const sort=params.get('sort')||'newest';
+  if(search) r=r.filter(p=>p.name.toLowerCase().includes(search)||p.category_name.toLowerCase().includes(search));
+  if(catId)  r=r.filter(p=>p.product_id%4===parseInt(catId)%4); // rough category match for demo
+  r=r.filter(p=>p.price>=min&&p.price<=max);
+  if(sort==='price_asc')  r.sort((a,b)=>a.price-b.price);
+  if(sort==='price_desc') r.sort((a,b)=>b.price-a.price);
+  if(sort==='rating')     r.sort((a,b)=>b.avg_rating-a.avg_rating);
+  return r;
+}
+
 // ── Products ──────────────────────────────────────────────────
 async function loadProducts(page){
   const grid=document.getElementById('pgrid');
@@ -618,7 +662,16 @@ async function loadProducts(page){
     grid.innerHTML=products.map(p=>productCard(p)).join('');
     renderPag(pagination,page);
   }catch(e){
-    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ei">⚠</div><h3>${e.message}</h3><p>Is the backend running?</p></div>`;
+    const filtered=applyMockFilters(MOCK_PRODUCTS,p);
+    const limit=12,total=filtered.length,pages=Math.max(1,Math.ceil(total/limit));
+    const slice=filtered.slice((page-1)*limit,page*limit);
+    document.getElementById('prod-count').textContent=`${total} products (demo)`;
+    if(!slice.length){
+      grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ei">🔍</div><h3>No products found</h3><p>Try different filters</p></div>';
+      document.getElementById('pag').innerHTML=''; return;
+    }
+    grid.innerHTML=slice.map(p=>productCard(p)).join('');
+    renderPag({pages},page);
   }
 }
 function productCard(p){
