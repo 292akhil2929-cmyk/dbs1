@@ -19,12 +19,18 @@ class InViewFade extends StatefulWidget {
 }
 
 class _InViewFadeState extends State<InViewFade> {
+  // FIX: use a static counter for stable, unique keys instead of
+  // widget.child.hashCode which changes on every rebuild causing
+  // the VisibilityDetector to remount and re-trigger the animation.
+  static int _counter = 0;
+  late final int _id = _counter++;
+
   bool _shown = false;
 
   @override
   Widget build(BuildContext context) {
     return VisibilityDetector(
-      key: ValueKey(widget.key ?? widget.child.hashCode),
+      key: ValueKey('in_view_fade_$_id'),
       onVisibilityChanged: (info) {
         if (_shown) return;
         if (info.visibleFraction > 0.12) setState(() => _shown = true);
@@ -40,4 +46,3 @@ class _InViewFadeState extends State<InViewFade> {
     );
   }
 }
-

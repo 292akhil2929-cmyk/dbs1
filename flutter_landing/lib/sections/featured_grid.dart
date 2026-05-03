@@ -27,35 +27,40 @@ class FeaturedGrid extends StatelessWidget {
                 ? 2
                 : 1;
 
+        // FIX: Wrap ConstrainedBox in Align so content centres on very wide
+        // screens instead of sitting left-aligned after the padding ends.
         return SliverPadding(
           padding: EdgeInsets.symmetric(horizontal: w >= 900 ? 56 : 22, vertical: 44),
           sliver: SliverToBoxAdapter(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1220),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InViewFade(
-                    child: Text(
-                      'Featured',
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.4,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1220),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InViewFade(
+                      child: Text(
+                        'Featured',
+                        style: GoogleFonts.inter(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.4,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  InViewFade(
-                    delay: const Duration(milliseconds: 70),
-                    child: Text(
-                      'Quietly bold essentials. Minimal. Precise. Built to last.',
-                      style: GoogleFonts.inter(color: AppTheme.muted, height: 1.6),
+                    const SizedBox(height: 10),
+                    InViewFade(
+                      delay: const Duration(milliseconds: 70),
+                      child: Text(
+                        'Quietly bold essentials. Minimal. Precise. Built to last.',
+                        style: GoogleFonts.inter(color: AppTheme.muted, height: 1.6),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 22),
-                  _Grid(crossAxisCount: cross),
-                ],
+                    const SizedBox(height: 22),
+                    _Grid(crossAxisCount: cross),
+                  ],
+                ),
               ),
             ),
           ),
@@ -125,7 +130,7 @@ class _ProductCardState extends State<_ProductCard> {
         decoration: BoxDecoration(
           color: AppTheme.surface2.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.border.withValues(alpha: 0.85), width: 1), // 1px border
+          border: Border.all(color: AppTheme.border.withValues(alpha: 0.85), width: 1),
           boxShadow: [shadow],
         ),
         child: Row(
@@ -174,9 +179,13 @@ class _ProductCardState extends State<_ProductCard> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    color: _hover ? AppTheme.accentBlue.withValues(alpha: 0.78) : Colors.white.withValues(alpha: 0.06),
+                    color: _hover
+                        ? AppTheme.accentBlue.withValues(alpha: 0.78)
+                        : Colors.white.withValues(alpha: 0.06),
                     border: Border.all(
-                      color: _hover ? AppTheme.accentBlue.withValues(alpha: 0.55) : AppTheme.border.withValues(alpha: 0.8),
+                      color: _hover
+                          ? AppTheme.accentBlue.withValues(alpha: 0.55)
+                          : AppTheme.border.withValues(alpha: 0.8),
                       width: 1,
                     ),
                   ),
@@ -200,4 +209,3 @@ class _Product {
   final String price;
   final String desc;
 }
-

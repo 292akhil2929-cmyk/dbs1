@@ -10,6 +10,10 @@ class GlassNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIX: hide nav text links on narrow screens to prevent overflow.
+    // Breakpoint matches the SliverAppBar side-padding breakpoint (900px).
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: BackdropFilter(
@@ -32,12 +36,14 @@ class GlassNavBar extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _NavItem(label: 'Collection'),
-              const SizedBox(width: 14),
-              _NavItem(label: 'Featured'),
-              const SizedBox(width: 14),
-              _NavItem(label: 'Craft'),
-              const SizedBox(width: 18),
+              if (isWide) ...[
+                _NavItem(label: 'Collection'),
+                const SizedBox(width: 14),
+                _NavItem(label: 'Featured'),
+                const SizedBox(width: 14),
+                _NavItem(label: 'Craft'),
+                const SizedBox(width: 18),
+              ],
               _PillButton(
                 label: 'Sign in',
                 onPressed: () {},
@@ -114,30 +120,32 @@ class _PillButtonState extends State<_PillButton> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: widget.primary
-                ? AppTheme.accentBlue.withValues(alpha: 0.55)
-                : AppTheme.border.withValues(alpha: 0.7),
-            width: 1,
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: widget.primary
+                  ? AppTheme.accentBlue.withValues(alpha: 0.55)
+                  : AppTheme.border.withValues(alpha: 0.7),
+              width: 1,
+            ),
           ),
-        ),
-        child: Text(
-          widget.label,
-          style: GoogleFonts.inter(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: fg,
-            letterSpacing: 0.2,
+          child: Text(
+            widget.label,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: fg,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ),
     );
   }
 }
-

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../sections/featured_grid.dart';
@@ -42,9 +44,11 @@ class _LuxurySliverAppBar extends StatelessWidget {
       collapsedHeight: 72,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          final t = ((constraints.maxHeight - 72) / (84 - 72)).clamp(0.0, 1.0);
+          final t =
+              ((constraints.maxHeight - 72) / (84 - 72)).clamp(0.0, 1.0);
           final pad = lerpDouble(18, 12, 1 - t)!;
-          final side = MediaQuery.sizeOf(context).width >= 900 ? 56.0 : 18.0;
+          final side =
+              MediaQuery.sizeOf(context).width >= 900 ? 56.0 : 18.0;
 
           return Padding(
             padding: EdgeInsets.fromLTRB(side, pad, side, pad),
@@ -60,9 +64,11 @@ class _LuxurySliverAppBar extends StatelessWidget {
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppTheme.border.withValues(alpha: 0.35)),
+        child: Container(
+          height: 1,
+          color: AppTheme.border.withValues(alpha: 0.35),
+        ),
       ),
     );
   }
 }
-

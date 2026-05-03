@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:292akhil2929-cmyk.github.io)",
+      "Bash(unzip -l shopsphere_github.zip)",
+      "Read(//c/Users/79akh/Downloads/dbs11/**)",
+      "Bash(unzip -l dbs1-main.zip)",
+      "Bash(unzip -o dbs1-main.zip \"dbs1-main/flutter_landing/*\" -d /tmp/flutter_extract/)",
+      "Bash(cd /tmp)",
+      "Bash(unzip -o /c/Users/79akh/Downloads/dbs11/dbs1-main.zip \"dbs1-main/flutter_landing/*\")",
+      "Read(//tmp/dbs1-main/**)",
+      "Bash(unzip -o /c/Users/79akh/Downloads/dbs11/dbs1-main.zip)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git rm *)"
+    ]
+  }
+}
