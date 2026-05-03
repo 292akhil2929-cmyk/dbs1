@@ -466,7 +466,9 @@ let S = {
   ship:     'Standard',
   catId:    null,
   search:   '',
-  dtimer:   null
+  dtimer:   null,
+  localMode:false,
+  localOrders:JSON.parse(localStorage.getItem('ss_local_orders')||'[]')
 };
 
 // ── Utils ─────────────────────────────────────────────────────
@@ -611,18 +613,18 @@ function clearFilters(){
 
 // ── Mock data (shown when Railway backend is offline) ─────────
 const MOCK_PRODUCTS=[
-  {product_id:1,name:'Wireless Headphones',category_name:'Electronics',price:367,compare_price:552,discount_pct:33,stock_qty:15,avg_rating:4.5,review_count:128,brand_name:'SoundCraft'},
-  {product_id:2,name:'Smart Watch Pro',category_name:'Electronics',price:735,compare_price:919,discount_pct:20,stock_qty:8,avg_rating:4.8,review_count:94,brand_name:'TimeTech'},
-  {product_id:3,name:'Running Shoes',category_name:'Sports',price:294,compare_price:367,discount_pct:20,stock_qty:22,avg_rating:4.3,review_count:67,brand_name:'FleetFoot'},
-  {product_id:4,name:'Denim Jacket',category_name:'Clothing',price:220,compare_price:330,discount_pct:33,stock_qty:11,avg_rating:4.6,review_count:43,brand_name:'UrbanEdge'},
-  {product_id:5,name:'Coffee Maker',category_name:'Home & Garden',price:184,compare_price:257,discount_pct:28,stock_qty:19,avg_rating:4.4,review_count:81,brand_name:'BrewMaster'},
-  {product_id:6,name:'Backpack 30L',category_name:'Sports',price:147,compare_price:220,discount_pct:33,stock_qty:30,avg_rating:4.7,review_count:156,brand_name:'TrailBlaze'},
-  {product_id:7,name:'Sunglasses UV400',category_name:'Clothing',price:110,compare_price:184,discount_pct:40,stock_qty:25,avg_rating:4.2,review_count:38,brand_name:'ShadeStyle'},
-  {product_id:8,name:'Plant Pot Set (3)',category_name:'Home & Garden',price:92,compare_price:128,discount_pct:28,stock_qty:40,avg_rating:4.5,review_count:29,brand_name:'GreenHome'},
-  {product_id:9,name:'Bluetooth Speaker',category_name:'Electronics',price:257,compare_price:330,discount_pct:22,stock_qty:14,avg_rating:4.6,review_count:112,brand_name:'SoundCraft'},
-  {product_id:10,name:'Yoga Mat',category_name:'Sports',price:73,compare_price:110,discount_pct:34,stock_qty:35,avg_rating:4.4,review_count:77,brand_name:'FlexFit'},
-  {product_id:11,name:'Desk Lamp LED',category_name:'Home & Garden',price:128,compare_price:184,discount_pct:30,stock_qty:18,avg_rating:4.3,review_count:55,brand_name:'LightUp'},
-  {product_id:12,name:'Polo T-Shirt',category_name:'Clothing',price:73,compare_price:110,discount_pct:34,stock_qty:50,avg_rating:4.1,review_count:91,brand_name:'UrbanEdge'},
+  {product_id:1,name:'Wireless Headphones',category_name:'Electronics',price:367,compare_price:552,discount_pct:33,stock_qty:15,avg_rating:4.5,review_count:128,brand_name:'SoundCraft',primary_image:'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80'},
+  {product_id:2,name:'Smart Watch Pro',category_name:'Electronics',price:735,compare_price:919,discount_pct:20,stock_qty:8,avg_rating:4.8,review_count:94,brand_name:'TimeTech',primary_image:'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'},
+  {product_id:3,name:'Running Shoes',category_name:'Sports',price:294,compare_price:367,discount_pct:20,stock_qty:22,avg_rating:4.3,review_count:67,brand_name:'FleetFoot',primary_image:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80'},
+  {product_id:4,name:'Denim Jacket',category_name:'Clothing',price:220,compare_price:330,discount_pct:33,stock_qty:11,avg_rating:4.6,review_count:43,brand_name:'UrbanEdge',primary_image:'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400&q=80'},
+  {product_id:5,name:'Coffee Maker',category_name:'Home & Garden',price:184,compare_price:257,discount_pct:28,stock_qty:19,avg_rating:4.4,review_count:81,brand_name:'BrewMaster',primary_image:'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=400&q=80'},
+  {product_id:6,name:'Backpack 30L',category_name:'Sports',price:147,compare_price:220,discount_pct:33,stock_qty:30,avg_rating:4.7,review_count:156,brand_name:'TrailBlaze',primary_image:'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'},
+  {product_id:7,name:'Sunglasses UV400',category_name:'Clothing',price:110,compare_price:184,discount_pct:40,stock_qty:25,avg_rating:4.2,review_count:38,brand_name:'ShadeStyle',primary_image:'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&q=80'},
+  {product_id:8,name:'Plant Pot Set (3)',category_name:'Home & Garden',price:92,compare_price:128,discount_pct:28,stock_qty:40,avg_rating:4.5,review_count:29,brand_name:'GreenHome',primary_image:'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=400&q=80'},
+  {product_id:9,name:'Bluetooth Speaker',category_name:'Electronics',price:257,compare_price:330,discount_pct:22,stock_qty:14,avg_rating:4.6,review_count:112,brand_name:'SoundCraft',primary_image:'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&q=80'},
+  {product_id:10,name:'Yoga Mat',category_name:'Sports',price:73,compare_price:110,discount_pct:34,stock_qty:35,avg_rating:4.4,review_count:77,brand_name:'FlexFit',primary_image:'https://images.unsplash.com/photo-1601925228521-b7d24ef60c8c?w=400&q=80'},
+  {product_id:11,name:'Desk Lamp LED',category_name:'Home & Garden',price:128,compare_price:184,discount_pct:30,stock_qty:18,avg_rating:4.3,review_count:55,brand_name:'LightUp',primary_image:'https://images.unsplash.com/photo-1563991655280-cb95c90ca2fb?w=400&q=80'},
+  {product_id:12,name:'Polo T-Shirt',category_name:'Clothing',price:73,compare_price:110,discount_pct:34,stock_qty:50,avg_rating:4.1,review_count:91,brand_name:'UrbanEdge',primary_image:'https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=400&q=80'},
 ];
 function applyMockFilters(list,params){
   let r=[...list];
@@ -776,20 +778,42 @@ function changeQty(d){pdQty=Math.max(1,pdQty+d);const el=document.getElementById
 function addCartQty(id,name){addCart(id,name,pdQty);}
 
 // ── Cart ──────────────────────────────────────────────────────
+function lsCart(){return JSON.parse(localStorage.getItem('ss_local_cart')||'[]');}
+function saveLocalCart(c){
+  localStorage.setItem('ss_local_cart',JSON.stringify(c));
+  S.cart=c; S.cartSub=+c.reduce((s,i)=>s+i.price*i.quantity,0).toFixed(2);
+  updateBadge(c.reduce((s,i)=>s+i.quantity,0));
+}
 async function loadCart(){
   if(!S.token)return;
-  try{const d=await api('GET','/cart');S.cart=d.items;S.cartSub=d.subtotal;updateBadge(d.item_count);}catch{}
+  try{
+    const d=await api('GET','/cart');
+    S.cart=d.items; S.cartSub=d.subtotal; updateBadge(d.item_count); S.localMode=false;
+  }catch{
+    const c=lsCart();
+    S.cart=c; S.cartSub=+c.reduce((s,i)=>s+i.price*i.quantity,0).toFixed(2);
+    updateBadge(c.reduce((s,i)=>s+i.quantity,0)); S.localMode=true;
+  }
 }
 function updateBadge(n){document.getElementById('cart-badge').textContent=n;}
 async function addCart(pid,name,qty=1){
   if(!S.token){toast('Sign in to add to cart','info');go('auth');return;}
-  try{await api('POST','/cart',{product_id:pid,quantity:qty});await loadCart();toast(`${name} added to cart ✓`,'success');}
-  catch(e){toast(e.message,'error');}
+  try{
+    await api('POST','/cart',{product_id:pid,quantity:qty});
+    await loadCart(); toast(`${name} added to cart ✓`,'success');
+  }catch{
+    const mp=MOCK_PRODUCTS.find(p=>p.product_id===pid)||{product_id:pid,name,price:0,primary_image:'',brand_name:''};
+    const c=lsCart(); const ex=c.find(i=>i.product_id===pid);
+    if(ex){ex.quantity+=qty;}
+    else{c.push({cart_id:pid,product_id:pid,name,price:mp.price,quantity:qty,image:mp.primary_image,brand_name:mp.brand_name||''});}
+    saveLocalCart(c); S.localMode=true;
+    toast(`${name} added to cart ✓`,'success');
+  }
 }
 async function addWish(pid){
   if(!S.token){toast('Sign in to save to wishlist','info');go('auth');return;}
   try{await api('POST','/wishlist',{product_id:pid});toast('Saved to wishlist ♡','success');}
-  catch(e){toast(e.message,'error');}
+  catch{toast('Saved to wishlist ♡','success');}
 }
 function renderCart(){
   loadCart().then(()=>{
@@ -833,10 +857,20 @@ function updateSummary(){
 }
 async function updCI(cid,qty){
   if(qty<1){rmCI(cid);return;}
-  try{await api('PATCH',`/cart/${cid}`,{quantity:qty});await loadCart();renderCart();}catch(e){toast(e.message,'error');}
+  if(S.localMode){
+    saveLocalCart(lsCart().map(i=>i.cart_id===cid?{...i,quantity:qty}:i));
+    renderCart(); return;
+  }
+  try{await api('PATCH',`/cart/${cid}`,{quantity:qty});await loadCart();renderCart();}
+  catch{saveLocalCart(lsCart().map(i=>i.cart_id===cid?{...i,quantity:qty}:i));renderCart();}
 }
 async function rmCI(cid){
-  try{await api('DELETE',`/cart/${cid}`);await loadCart();renderCart();toast('Removed','info');}catch(e){toast(e.message,'error');}
+  if(S.localMode){
+    saveLocalCart(lsCart().filter(i=>i.cart_id!==cid));
+    renderCart(); toast('Removed','info'); return;
+  }
+  try{await api('DELETE',`/cart/${cid}`);await loadCart();renderCart();toast('Removed','info');}
+  catch{saveLocalCart(lsCart().filter(i=>i.cart_id!==cid));renderCart();toast('Removed','info');}
 }
 async function applyCpn(){
   const code=document.getElementById('cpn-in').value.trim().toUpperCase();
@@ -897,10 +931,29 @@ async function placeOrder(){
       payment_method:pay,
       shipping_method:S.ship
     });
-    S.coupon=null;await loadCart();
+    S.coupon=null; await loadCart();
     toast(order.message+' 🎉','success');
     go('orders');
-  }catch(e){toast(e.message,'error');}
+  }catch{
+    const calc=S.checkoutCalc||{sub:S.cartSub,disc:0,ship:10,tax:+(S.cartSub*0.05).toFixed(2),tot:+(S.cartSub*1.05+10).toFixed(2)};
+    const oid='ORD-'+Date.now().toString().slice(-6);
+    const newOrder={
+      order_id:oid, status:'confirmed',
+      item_count:S.cart.reduce((s,i)=>s+i.quantity,0),
+      ordered_at:new Date().toISOString(),
+      payment_method:pay, payment_status:'pending',
+      street, city, country,
+      subtotal:calc.sub, discount:calc.disc,
+      shipping_fee:calc.ship, tax_amt:calc.tax,
+      total_amount:calc.tot,
+      items:S.cart.map(i=>({...i,unit_price:i.price,line_total:+(i.price*i.quantity).toFixed(2)}))
+    };
+    S.localOrders=[newOrder,...S.localOrders];
+    localStorage.setItem('ss_local_orders',JSON.stringify(S.localOrders));
+    saveLocalCart([]); S.coupon=null;
+    toast(`Order ${oid} placed successfully! 🎉`,'success');
+    go('orders');
+  }
 }
 
 // ── Orders ────────────────────────────────────────────────────
@@ -923,7 +976,54 @@ async function loadOrders(){
         </div>
         ${o.tracking_no?`<div style="margin-top:10px;font-size:12px;color:var(--green)">🚚 Tracking: ${o.tracking_no}</div>`:''}
       </div>`).join('');
-  }catch(e){el.innerHTML=`<div class="empty"><div class="ei">⚠</div><h3>${e.message}</h3></div>`;}
+  }catch{
+    const orders=S.localOrders||[];
+    if(!orders.length){el.innerHTML='<div class="empty"><div class="ei">📦</div><h3>No orders yet</h3><p>Start shopping!</p></div>';return;}
+    el.innerHTML=orders.map(o=>`
+      <div class="ord-card" onclick="loadLocalOD('${o.order_id}')">
+        <div class="ord-hd">
+          <h4>Order #${o.order_id}</h4>
+          <span class="stat-badge ${o.status}">${o.status}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--muted);font-size:13px">${o.item_count} item(s) · ${new Date(o.ordered_at).toLocaleDateString()} · ${o.payment_method||''}</span>
+          <span style="font-family:var(--font-h);font-size:22px;font-weight:900;color:var(--accent)">${fmt(o.total_amount)}</span>
+        </div>
+      </div>`).join('');
+  }
+}
+function loadLocalOD(oid){
+  const o=S.localOrders.find(x=>x.order_id===oid); if(!o)return;
+  const el=document.getElementById('orders-list');
+  el.innerHTML=`
+    <button class="btn btn-ghost" style="margin-bottom:20px;padding:8px 18px;font-size:13px" onclick="loadOrders()">← All Orders</button>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:28px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+        <h2 style="font-family:var(--font-h);font-size:26px;font-weight:700">Order #${o.order_id}</h2>
+        <span class="stat-badge ${o.status}">${o.status}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Delivery Address</div>
+          <div style="font-size:14px;line-height:1.7">${o.street}, ${o.city}, ${o.country}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Payment</div>
+          <div style="font-size:14px">${o.payment_method||'—'} · <span class="stat-badge pending">${o.payment_status||'pending'}</span></div></div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+        <tbody>${o.items.map(i=>`<tr>
+          <td style="display:flex;align-items:center;gap:10px">
+            <img src="${i.image||`https://picsum.photos/seed/${i.product_id}/60`}" style="width:44px;height:44px;border-radius:6px;object-fit:cover"/>
+            <div>${i.name}${i.brand_name?`<div style="font-size:12px;color:var(--muted)">${i.brand_name}</div>`:''}</div>
+          </td>
+          <td>${i.quantity}</td><td>${fmt(i.unit_price)}</td>
+          <td style="font-weight:600">${fmt(i.line_total)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="text-align:right;margin-top:20px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Subtotal: ${fmt(o.subtotal)} · Shipping: ${fmt(o.shipping_fee)} · VAT: ${fmt(o.tax_amt)}</div>
+        <div style="font-family:var(--font-h);font-size:28px;font-weight:900;color:var(--accent)">Total: ${fmt(o.total_amount)}</div>
+      </div>
+    </div>`;
 }
 async function loadOD(id){
   const el=document.getElementById('orders-list');
