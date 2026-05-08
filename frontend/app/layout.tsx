@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ShopSphere — Premium Tech, Delivered",
+  title: "CHRONO-VANDL — Mechanical Anomaly",
   description:
-    "Discover hand-picked audio, peripherals, and workspace gear. Free shipping on orders over AED 200.",
-  keywords: ["tech", "audio", "peripherals", "e-commerce", "UAE"],
+    "A timepiece born from contradiction. Hand-assembled Swiss movement. Titanium Grade-5 case. Limited drop — AED 2,850.",
+  keywords: ["luxury watch", "CHRONO-VANDL", "Swiss movement", "titanium", "limited edition", "UAE"],
   openGraph: {
-    title: "ShopSphere",
-    description: "Premium Tech, Delivered.",
+    title: "CHRONO-VANDL — Mechanical Anomaly",
+    description: "A timepiece born from contradiction.",
     type: "website",
   },
 };
@@ -28,7 +28,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,400;1,6..96,700;1,6..96,900&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
