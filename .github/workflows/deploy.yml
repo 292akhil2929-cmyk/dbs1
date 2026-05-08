@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # need full history so force-push to main works
 
       - uses: subosito/flutter-action@v2
         with:
@@ -30,8 +32,24 @@ jobs:
         working-directory: flutter_landing
         run: flutter build web --release --base-href "/dbs1/"
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: flutter_landing/build/web
+      # ── Deploy Flutter build directly into the root of main branch ──
+      # GitHub Pages for this repo is configured to serve from main/root.
+      # We copy the build output to the repo root, commit, and push so
+      # the live site always shows the Flutter app.
+      - name: Deploy Flutter build to main branch root
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Copy Flutter web output to repo root (overwrites old index.html)
+          cp -r flutter_landing/build/web/. .
+
+          # Stage only the built assets — leave source dirs untouched
+          git add index.html flutter.js flutter_service_worker.js \
+                  flutter_bootstrap.js main.dart.js manifest.json \
+                  favicon.png icons/ flutter_assets/ assets/ \
+                  version.json canvaskit/ 2>/dev/null || true
+
+          git diff --cached --quiet && echo "Nothing to deploy." \
+            || git commit -m "chore: deploy Flutter web [skip ci]" \
+            && git push origin main

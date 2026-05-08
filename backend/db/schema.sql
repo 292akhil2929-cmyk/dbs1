@@ -1,8 +1,8 @@
 -- ================================================================
 -- ShopSphere — E-Commerce Database
 -- CS F212 Database Systems | BITS Pilani Dubai
--- Group of 6 → 15 Tables | 5 Views | 5 Functions
---              12 Triggers | 7 Stored Procedures
+-- Group of 6 → 20 Tables | 7 Views | 7 Functions
+--              14 Triggers | 9 Stored Procedures
 -- ================================================================
 
 DROP DATABASE IF EXISTS shopsphere;
@@ -318,6 +318,92 @@ CREATE TABLE AUDIT_LOG (
   INDEX        idx_audit_record (record_id),
   INDEX        idx_audit_date   (changed_at)
 ) ENGINE=InnoDB COMMENT='Immutable audit trail for key table changes';
+
+-- ================================================================
+-- TABLE 16: NOTIFICATIONS
+-- ================================================================
+CREATE TABLE NOTIFICATIONS (
+  notif_id     INT           NOT NULL AUTO_INCREMENT,
+  user_id      INT           NOT NULL,
+  type         ENUM('order_update','promo','restock','review_reply','system')
+               NOT NULL DEFAULT 'system',
+  title        VARCHAR(200)  NOT NULL,
+  body         TEXT,
+  is_read      TINYINT(1)    NOT NULL DEFAULT 0,
+  ref_id       INT           DEFAULT NULL  COMMENT 'Related order_id/product_id',
+  ref_type     VARCHAR(50)   DEFAULT NULL  COMMENT 'orders | products | reviews',
+  created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY  (notif_id),
+  CONSTRAINT   fk_notif_user FOREIGN KEY (user_id)
+               REFERENCES USERS(user_id) ON DELETE CASCADE,
+  INDEX        idx_notif_user   (user_id),
+  INDEX        idx_notif_unread (user_id, is_read),
+  INDEX        idx_notif_date   (created_at)
+) ENGINE=InnoDB COMMENT='In-app notifications for order updates, promos and system alerts';
+
+-- ================================================================
+-- TABLE 17: SHIPPING_ZONES
+-- ================================================================
+CREATE TABLE SHIPPING_ZONES (
+  zone_id      INT           NOT NULL AUTO_INCREMENT,
+  zone_name    VARCHAR(100)  NOT NULL,
+  country      VARCHAR(100)  NOT NULL DEFAULT 'UAE',
+  emirate      VARCHAR(100)  DEFAULT NULL,
+  base_fee     DECIMAL(10,2) NOT NULL DEFAULT 10.00,
+  express_fee  DECIMAL(10,2) NOT NULL DEFAULT 25.00,
+  free_above   DECIMAL(10,2) DEFAULT NULL COMMENT 'Free shipping threshold',
+  est_days     TINYINT       NOT NULL DEFAULT 3 COMMENT 'Estimated delivery days',
+  is_active    TINYINT(1)    NOT NULL DEFAULT 1,
+  PRIMARY KEY  (zone_id),
+  INDEX        idx_sz_country (country),
+  INDEX        idx_sz_active  (is_active)
+) ENGINE=InnoDB COMMENT='Shipping zones with rate configuration per region';
+
+-- ================================================================
+-- TABLE 18: TAGS
+-- ================================================================
+CREATE TABLE TAGS (
+  tag_id       INT           NOT NULL AUTO_INCREMENT,
+  name         VARCHAR(80)   NOT NULL,
+  slug         VARCHAR(90)   NOT NULL,
+  color_hex    CHAR(7)       DEFAULT '#3B82F6' COMMENT 'Display colour for UI badges',
+  PRIMARY KEY  (tag_id),
+  UNIQUE KEY   uq_tag_name (name),
+  UNIQUE KEY   uq_tag_slug (slug)
+) ENGINE=InnoDB COMMENT='Flexible product tags: bestseller, new-arrival, limited, eco, etc.';
+
+-- ================================================================
+-- TABLE 19: PRODUCT_TAGS  (M:N between PRODUCTS and TAGS — 1NF)
+-- ================================================================
+CREATE TABLE PRODUCT_TAGS (
+  product_id   INT           NOT NULL,
+  tag_id       INT           NOT NULL,
+  tagged_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY  (product_id, tag_id),
+  CONSTRAINT   fk_pt_product FOREIGN KEY (product_id)
+               REFERENCES PRODUCTS(product_id) ON DELETE CASCADE,
+  CONSTRAINT   fk_pt_tag     FOREIGN KEY (tag_id)
+               REFERENCES TAGS(tag_id) ON DELETE CASCADE,
+  INDEX        idx_pt_tag    (tag_id)
+) ENGINE=InnoDB COMMENT='Junction table — resolves M:N between PRODUCTS and TAGS (1NF)';
+
+-- ================================================================
+-- TABLE 20: ORDER_STATUS_HISTORY  (audit trail for order transitions)
+-- ================================================================
+CREATE TABLE ORDER_STATUS_HISTORY (
+  history_id   INT           NOT NULL AUTO_INCREMENT,
+  order_id     INT           NOT NULL,
+  prev_status  VARCHAR(30)   NOT NULL,
+  new_status   VARCHAR(30)   NOT NULL,
+  changed_by   INT           DEFAULT NULL COMMENT 'user_id of admin/system',
+  comment      VARCHAR(255)  DEFAULT NULL,
+  changed_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY  (history_id),
+  CONSTRAINT   fk_osh_order FOREIGN KEY (order_id)
+               REFERENCES ORDERS(order_id) ON DELETE CASCADE,
+  INDEX        idx_osh_order (order_id),
+  INDEX        idx_osh_date  (changed_at)
+) ENGINE=InnoDB COMMENT='Full audit log of every order status transition — required for SLAs';
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -1222,3 +1308,226 @@ INSERT INTO WISHLISTS (user_id, product_id) VALUES
 -- JOIN PRODUCTS p ON oi.product_id=p.product_id
 -- LEFT JOIN BRANDS b ON p.brand_id=b.brand_id
 -- ORDER BY o.order_id;
+
+-- ================================================================
+-- ADDITIONAL VIEWS (6 & 7)
+-- ================================================================
+
+-- View 6: Products with their tags
+CREATE OR REPLACE VIEW vw_product_tags AS
+SELECT
+  p.product_id,
+  p.name          AS product_name,
+  p.price,
+  p.avg_rating,
+  GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') AS tags
+FROM PRODUCTS p
+JOIN PRODUCT_TAGS pt ON p.product_id = pt.product_id
+JOIN TAGS        t   ON pt.tag_id    = t.tag_id
+WHERE p.is_active = 1
+GROUP BY p.product_id, p.name, p.price, p.avg_rating;
+
+-- View 7: Unread notification counts per user
+CREATE OR REPLACE VIEW vw_unread_notifications AS
+SELECT
+  u.user_id,
+  u.full_name,
+  u.email,
+  COUNT(n.notif_id)                                   AS total_notifications,
+  SUM(CASE WHEN n.is_read = 0 THEN 1 ELSE 0 END)     AS unread_count,
+  MAX(n.created_at)                                   AS latest_notif_at
+FROM USERS u
+LEFT JOIN NOTIFICATIONS n ON u.user_id = n.user_id
+WHERE u.is_active = 1
+GROUP BY u.user_id, u.full_name, u.email;
+
+-- ================================================================
+-- ADDITIONAL FUNCTIONS (6 & 7)
+-- ================================================================
+
+DELIMITER $$
+
+-- Function 6: Lookup shipping zone fee by emirate
+CREATE FUNCTION fn_zone_shipping_fee(
+  p_emirate    VARCHAR(100),
+  p_is_express TINYINT
+)
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+BEGIN
+  DECLARE v_fee DECIMAL(10,2) DEFAULT 10.00;
+  SELECT IF(p_is_express, express_fee, base_fee)
+  INTO   v_fee
+  FROM   SHIPPING_ZONES
+  WHERE  emirate = p_emirate AND is_active = 1
+  LIMIT  1;
+  RETURN COALESCE(v_fee, IF(p_is_express, 25.00, 10.00));
+END$$
+
+-- Function 7: Calculate VAT-inclusive price (UAE 5%)
+CREATE FUNCTION fn_price_with_vat(p_price DECIMAL(10,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+  RETURN ROUND(p_price * 1.05, 2);
+END$$
+
+DELIMITER ;
+
+-- ================================================================
+-- ADDITIONAL TRIGGERS (13 & 14)
+-- ================================================================
+
+DELIMITER $$
+
+-- Trigger 13: AFTER UPDATE ORDERS — record status change in history
+CREATE TRIGGER trg_order_status_history
+AFTER UPDATE ON ORDERS
+FOR EACH ROW
+BEGIN
+  IF OLD.status <> NEW.status THEN
+    INSERT INTO ORDER_STATUS_HISTORY (order_id, prev_status, new_status)
+    VALUES (NEW.order_id, OLD.status, NEW.status);
+    -- Notify the customer about their order update
+    INSERT INTO NOTIFICATIONS (user_id, type, title, body, ref_id, ref_type)
+    VALUES (NEW.user_id, 'order_update',
+      CONCAT('Order #', NEW.order_id, ' — ', NEW.status),
+      CONCAT('Your order status changed from ', OLD.status, ' to ', NEW.status, '.'),
+      NEW.order_id, 'orders');
+  END IF;
+END$$
+
+-- Trigger 14: AFTER UPDATE PRODUCTS — notify wishlist users when restocked
+CREATE TRIGGER trg_notify_restock
+AFTER UPDATE ON PRODUCTS
+FOR EACH ROW
+BEGIN
+  IF OLD.stock_qty = 0 AND NEW.stock_qty > 0 THEN
+    INSERT INTO NOTIFICATIONS (user_id, type, title, body, ref_id, ref_type)
+    SELECT w.user_id, 'restock',
+      CONCAT(NEW.name, ' is back in stock!'),
+      CONCAT('Grab it before it sells out — only ', NEW.stock_qty, ' left.'),
+      NEW.product_id, 'products'
+    FROM WISHLISTS w
+    WHERE w.product_id = NEW.product_id;
+  END IF;
+END$$
+
+DELIMITER ;
+
+-- ================================================================
+-- ADDITIONAL STORED PROCEDURES (8 & 9)
+-- ================================================================
+
+DELIMITER $$
+
+-- Procedure 8: Send notification to all users about a promo
+CREATE PROCEDURE sp_broadcast_promo(
+  IN p_title   VARCHAR(200),
+  IN p_body    TEXT
+)
+BEGIN
+  INSERT INTO NOTIFICATIONS (user_id, type, title, body, ref_type)
+  SELECT user_id, 'promo', p_title, p_body, 'system'
+  FROM   USERS WHERE is_active = 1 AND role = 'customer';
+
+  SELECT ROW_COUNT() AS notifications_sent;
+END$$
+
+-- Procedure 9: Get order status history for an order
+CREATE PROCEDURE sp_order_timeline(IN p_order_id INT)
+BEGIN
+  SELECT
+    h.history_id,
+    h.prev_status,
+    h.new_status,
+    h.comment,
+    h.changed_at,
+    COALESCE(u.full_name, 'System') AS changed_by_name
+  FROM   ORDER_STATUS_HISTORY h
+  LEFT JOIN USERS u ON h.changed_by = u.user_id
+  WHERE  h.order_id = p_order_id
+  ORDER BY h.changed_at ASC;
+END$$
+
+DELIMITER ;
+
+-- ================================================================
+-- SEED DATA FOR NEW TABLES
+-- ================================================================
+
+-- Shipping zones (UAE emirates)
+INSERT INTO SHIPPING_ZONES (zone_name, country, emirate, base_fee, express_fee, free_above, est_days) VALUES
+  ('Dubai Standard',      'UAE', 'Dubai',         10.00, 25.00,  500.00, 2),
+  ('Abu Dhabi Standard',  'UAE', 'Abu Dhabi',     15.00, 30.00,  500.00, 3),
+  ('Sharjah Standard',    'UAE', 'Sharjah',       15.00, 30.00,  500.00, 3),
+  ('Ajman Standard',      'UAE', 'Ajman',         20.00, 35.00,  700.00, 4),
+  ('Ras Al Khaimah',      'UAE', 'Ras Al Khaimah',20.00, 40.00,  700.00, 4),
+  ('Fujairah Remote',     'UAE', 'Fujairah',      25.00, 45.00, 1000.00, 5),
+  ('Umm Al Quwain',       'UAE', 'Umm Al Quwain', 20.00, 40.00,  700.00, 4);
+
+-- Tags
+INSERT INTO TAGS (name, slug, color_hex) VALUES
+  ('Bestseller',   'bestseller',   '#F59E0B'),
+  ('New Arrival',  'new-arrival',  '#10B981'),
+  ('Limited',      'limited',      '#EF4444'),
+  ('Eco Friendly', 'eco-friendly', '#22C55E'),
+  ('Staff Pick',   'staff-pick',   '#3B82F6'),
+  ('Clearance',    'clearance',    '#6B7280'),
+  ('Bundle Deal',  'bundle-deal',  '#8B5CF6');
+
+-- Product tags
+INSERT INTO PRODUCT_TAGS (product_id, tag_id) VALUES
+  (1, 1),(1, 5),   -- iPhone: Bestseller, Staff Pick
+  (2, 1),          -- S24 Ultra: Bestseller
+  (4, 1),(4, 5),   -- MacBook: Bestseller, Staff Pick
+  (7, 1),(7, 5),   -- Sony WH: Bestseller, Staff Pick
+  (12, 1),         -- Nike AF1: Bestseller
+  (3, 2),          -- OnePlus 12: New Arrival
+  (8, 2),          -- AirPods Pro 2: New Arrival
+  (14, 1),(14, 7), -- Instant Pot: Bestseller, Bundle Deal
+  (17, 6),         -- Clean Code: Clearance
+  (5, 3),          -- Dell XPS: Limited
+  (10, 4);         -- DJI Gimbal: Eco Friendly
+
+-- Seed notifications for demo users
+INSERT INTO NOTIFICATIONS (user_id, type, title, body, ref_id, ref_type) VALUES
+  (2, 'order_update', 'Order Delivered!', 'Your order has been delivered. Enjoy your purchase!', 1, 'orders'),
+  (3, 'order_update', 'Order Delivered!', 'Your Sony WH-1000XM5 order has been delivered.', 2, 'orders'),
+  (5, 'promo',        'Flash Sale — Up to 50% Off', 'Use code FLASH50 today only on orders above AED 1000.', NULL, 'system'),
+  (6, 'order_update', 'Order Delivered!', 'Your MacBook Pro order has been delivered.', 5, 'orders'),
+  (7, 'order_update', 'Order Confirmed!', 'Your kitchen appliance order #6 is confirmed and processing.', 6, 'orders');
+
+-- Seed order status history for existing orders
+INSERT INTO ORDER_STATUS_HISTORY (order_id, prev_status, new_status, comment) VALUES
+  (1, 'pending',    'confirmed',   'Payment verified'),
+  (1, 'confirmed',  'processing',  'Warehouse preparing order'),
+  (1, 'processing', 'shipped',     'Dispatched via Emirates Post'),
+  (1, 'shipped',    'delivered',   'Delivered to customer'),
+  (2, 'pending',    'confirmed',   'Payment verified'),
+  (2, 'confirmed',  'shipped',     'Express dispatch'),
+  (2, 'shipped',    'delivered',   'Delivered to customer'),
+  (4, 'pending',    'confirmed',   'Payment verified'),
+  (4, 'confirmed',  'processing',  'Preparing shipment'),
+  (4, 'processing', 'shipped',     'In transit — TRK-2026-004422'),
+  (6, 'pending',    'confirmed',   'Debit card payment cleared');
+
+-- ================================================================
+-- ADDITIONAL COMPLEX QUERIES
+-- ================================================================
+
+-- Q6: Notification engagement — users with highest unread
+-- SELECT vw.user_id, vw.full_name, vw.unread_count FROM vw_unread_notifications
+-- WHERE vw.unread_count > 0 ORDER BY vw.unread_count DESC;
+
+-- Q7: Products with all tags (many-to-many join demo)
+-- SELECT vt.product_name, vt.price, vt.avg_rating, vt.tags
+-- FROM vw_product_tags vt ORDER BY vt.avg_rating DESC LIMIT 10;
+
+-- Q8: Shipping zone with free shipping threshold check
+-- SELECT sz.zone_name, sz.emirate, fn_zone_shipping_fee(sz.emirate, 0) AS std_fee,
+--   fn_zone_shipping_fee(sz.emirate, 1) AS express_fee, sz.free_above
+-- FROM SHIPPING_ZONES sz WHERE sz.is_active=1 ORDER BY sz.base_fee;
+
+-- Q9: Full order timeline for order 1 (using stored procedure)
+-- CALL sp_order_timeline(1);
