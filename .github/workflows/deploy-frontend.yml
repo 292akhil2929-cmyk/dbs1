@@ -1,0 +1,57 @@
+name: Deploy Next.js Frontend to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "frontend/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "pages-frontend"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build Next.js static export
+        working-directory: frontend
+        run: npm run build
+        # Output lands in frontend/out/
+
+      - name: Deploy to main branch at /shop
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Wipe the old shop/ directory and replace with fresh build
+          rm -rf shop
+          cp -r frontend/out shop
+
+          # GitHub Pages needs index.html at every directory level — already handled
+          # by Next.js trailingSlash + output:export.
+
+          git add shop/
+          git diff --cached --quiet \
+            && echo "No frontend changes to deploy." \
+            || ( git commit -m "chore: deploy Next.js frontend [skip ci]" \
+                 && git push origin main )
