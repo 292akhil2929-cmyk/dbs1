@@ -1,11 +1,13 @@
 name: Deploy Next.js Frontend to GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - "frontend/**"
   workflow_dispatch:
+  # Auto-trigger disabled: we build locally and commit shop/ directly
+  # to avoid race conditions with manual deploys.
+  # Re-enable by uncommenting:
+  # push:
+  #   branches: [ main ]
+  #   paths: [ "frontend/**" ]
 
 permissions:
   contents: write
