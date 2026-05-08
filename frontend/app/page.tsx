@@ -291,7 +291,7 @@ export default function HomePage() {
                       {(subtotal + (subtotal >= 200 ? 0 : 15)).toLocaleString()}
                     </span>
                   </div>
-                  <button className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-sm hover:bg-ink-light active:scale-98 transition-all shadow-float">
+                  <button className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-sm hover:bg-ink-light active:scale-95 transition-all shadow-float">
                     Proceed to Checkout
                   </button>
                   {subtotal < 200 && (

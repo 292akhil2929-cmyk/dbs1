@@ -26,12 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
-          cache-dependency-path: frontend/package.json
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build Next.js static export
         working-directory: frontend
@@ -43,12 +41,15 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Wipe the old shop/ directory and replace with fresh build
+          # Verify the build output exists
+          ls frontend/out || (echo "ERROR: frontend/out missing — build failed" && exit 1)
+
+          # Wipe old shop/ and replace with fresh static export
           rm -rf shop
           cp -r frontend/out shop
 
-          # GitHub Pages needs index.html at every directory level — already handled
-          # by Next.js trailingSlash + output:export.
+          # .nojekyll tells GitHub Pages NOT to filter _next/ underscore folders
+          touch shop/.nojekyll
 
           git add shop/
           git diff --cached --quiet \
